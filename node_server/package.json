@@ -1,0 +1,17 @@
+{
+  "name": "lotofacilpro-puter-server",
+  "version": "1.0.0",
+  "description": "Servidor Node.js local que faz a ponte entre o LotofacilPro v3 (Python/Flask) e os modelos de IA do Puter.js (Claude, GPT, Gemini).",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "@heyputer/puter.js": "^2.5.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2"
+  },
+  "author": "LotofacilPro v3",
+  "license": "MIT"
+}
