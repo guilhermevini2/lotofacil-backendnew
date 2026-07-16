@@ -1,0 +1,34 @@
+services:
+  # Backend principal (Flask) — analise, pool, jogos, chat.
+  - type: web
+    name: lotofacil-pro
+    env: python
+    buildCommand: pip install -r requirements_nuvem.txt
+    startCommand: gunicorn servidor_nuvem:app --workers 2 --threads 4 --timeout 300 --bind 0.0.0.0:$PORT
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.0
+      # URL publica do servico "lotofacil-pro-ia" abaixo. O Render nao
+      # preenche isso automaticamente entre dois "web services" -- depois
+      # do primeiro deploy do servico de IA, copie a URL dele (algo como
+      # https://lotofacil-pro-ia.onrender.com) e cole aqui, ou defina
+      # manualmente no dashboard do servico lotofacil-pro (Environment).
+      - key: PUTER_NODE_URL
+        sync: false
+
+  # Servidor Node.js (Puter.js) — usado pelas abas "IA" e "Chat".
+  # Sem PUTER_AUTH_TOKEN definido, cai automaticamente no motor heuristico
+  # local (sem IA generativa, mas sem quebrar o servico).
+  - type: web
+    name: lotofacil-pro-ia
+    env: node
+    rootDir: node_server
+    buildCommand: npm install
+    startCommand: node server.js
+    healthCheckPath: /health
+    envVars:
+      - key: PUTER_AUTH_TOKEN
+        sync: false   # defina manualmente no dashboard do Render, se tiver um token Puter
+      - key: PUTER_MODEL
+        value: gpt-4o-mini

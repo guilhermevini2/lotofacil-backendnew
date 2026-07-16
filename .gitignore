@@ -1,0 +1,19 @@
+# Cache e dados temporarios
+cache/*.json
+cache/*.pkl
+relatorios/
+jogos/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+.env
+.venv
+venv/
+node_modules/
+*.log
+
+# Nao subir modelos ML pesados para a nuvem
+cache/ml_model.pkl
+cache/ml_meta.json

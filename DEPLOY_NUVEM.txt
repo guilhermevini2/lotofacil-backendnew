@@ -1,0 +1,106 @@
+=============================================================
+  LOTOFACIL PRO v4 - DEPLOY NA NUVEM
+  iPhone + Android + qualquer dispositivo
+=============================================================
+
+RESULTADO FINAL
+---------------
+Voce tera uma URL tipo:
+  https://lotofacil-pro.up.railway.app
+
+Abra no iPhone:
+  1. Safari -> acesse a URL
+  2. Toque no icone de compartilhar (quadrado com seta)
+  3. "Adicionar a Tela de Inicio"
+  4. Pronto - icone aparece como app nativo!
+
+Abra no Android:
+  1. Chrome -> acesse a URL
+  2. Menu (3 pontinhos) -> "Adicionar a tela inicial"
+  3. Pronto!
+
+
+OPCAO A: RAILWAY (mais facil, recomendado)
+------------------------------------------
+Plano gratuito: 500 horas/mes (~21 dias)
+
+Passos:
+  1. Crie conta em https://github.com
+  2. Crie conta em https://railway.app (login com GitHub)
+  3. No Railway: "New Project" -> "Deploy from GitHub repo"
+  4. Faca upload do codigo no GitHub (veja abaixo)
+  5. Railway detecta automaticamente o Procfile
+  6. Aguarde 3-5 minutos
+  7. Clique em "Generate Domain" para ter a URL publica
+
+Upload no GitHub:
+  git init
+  git add .
+  git commit -m "LotofacilPro v4"
+  git branch -M main
+  git remote add origin https://github.com/SEU_USUARIO/lotofacil-pro.git
+  git push -u origin main
+
+Ou use: duplo clique em deploy_railway.bat
+
+
+OPCAO B: RENDER (alternativa gratuita)
+---------------------------------------
+Plano gratuito: 750 horas/mes
+
+  1. Crie conta em https://render.com
+  2. "New Web Service" -> conecte GitHub
+  3. Build: pip install -r requirements_nuvem.txt
+  4. Start: gunicorn servidor_nuvem:app --workers 2 --threads 4 --timeout 300 --bind 0.0.0.0:$PORT
+  5. Aguarde deploy
+
+AVISO: no plano gratuito do Render, o app "dorme" apos 15min sem uso.
+A primeira requisicao demora ~30s para "acordar".
+
+
+OPCAO C: PYTHONANYWHERE (mais simples ainda)
+---------------------------------------------
+Plano gratuito: sempre ativo, sem dormir
+
+  1. Crie conta em https://pythonanywhere.com
+  2. "Files" -> upload de todos os arquivos .py
+  3. "Web" -> "Add a new web app"
+  4. Escolha Flask, Python 3.11
+  5. Em "WSGI file", aponte para servidor_nuvem:app
+  6. "Reload" e pronto
+
+URL: https://SEU_USUARIO.pythonanywhere.com
+
+
+ARQUIVOS IMPORTANTES PARA O DEPLOY
+-----------------------------------
+  servidor_nuvem.py    <- servidor otimizado para nuvem
+  requirements_nuvem.txt <- dependencias leves (sem matplotlib)
+  Procfile             <- como iniciar (Railway/Render)
+  railway.json         <- config Railway
+  render.yaml          <- config Render
+  runtime.txt          <- versao Python
+
+
+DIFERENCA: LOCAL vs NUVEM
+--------------------------
+  Local   : matplotlib, openpyxl, reportlab, Node.js/Puter.js
+  Nuvem   : sem matplotlib (graficos), sem Excel, Puter.js via CDN
+
+  Funciona na nuvem: analise, AI Engine, chat, jogos, fechamento
+  Nao funciona na nuvem: graficos PNG, exportacao Excel/PDF
+
+
+VARIAVEIS DE AMBIENTE (opcionais)
+----------------------------------
+  PORT=5000          (Railway define automaticamente)
+  FLASK_DEBUG=0      (nunca ativar em producao)
+
+
+CUSTO
+-----
+  Railway : GRATIS ate 500h/mes (suficiente para uso diario)
+  Render  : GRATIS ate 750h/mes
+  PythonAnywhere: GRATIS sempre (mais lento)
+
+=============================================================
