@@ -26,9 +26,9 @@ kiwify_bp = Blueprint("kiwify_webhook", __name__)
 WEBHOOK_TOKEN = os.environ.get("KIWIFY_WEBHOOK_TOKEN", "")
 
 # Eventos que LIBERAM acesso
-EVENTOS_ATIVAR = {"compra_aprovada", "subscription_renewed"}
+EVENTOS_ATIVAR = {"compra_aprovada", "order_approved", "subscription_renewed"}
 # Eventos que REVOGAM acesso
-EVENTOS_DESATIVAR = {"compra_reembolsada", "chargeback", "subscription_canceled"}
+EVENTOS_DESATIVAR = {"compra_reembolsada", "order_refunded", "chargeback", "subscription_canceled"}
 # Atraso: mantemos como status separado (voce decide se bloqueia ou da carencia)
 EVENTOS_ATRASO = {"subscription_late"}
 
