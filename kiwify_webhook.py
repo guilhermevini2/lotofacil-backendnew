@@ -31,6 +31,8 @@ EVENTOS_ATIVAR = {"compra_aprovada", "order_approved", "subscription_renewed"}
 EVENTOS_DESATIVAR = {"compra_reembolsada", "order_refunded", "chargeback", "subscription_canceled"}
 # Atraso: mantemos como status separado (voce decide se bloqueia ou da carencia)
 EVENTOS_ATRASO = {"subscription_late"}
+# Eventos que nao mudam status nenhum (compra que nunca foi aprovada = nunca teve acesso)
+EVENTOS_IGNORAR = {"order_rejected", "boleto_gerado", "pix_gerado", "carrinho_abandonado"}
 
 
 def _extrair_evento(payload, query_event):
@@ -95,6 +97,8 @@ def receber_webhook_kiwify():
         auth.set_subscription_status(email, "inactive")
     elif evento in EVENTOS_ATRASO:
         auth.set_subscription_status(email, "late")
+    elif evento in EVENTOS_IGNORAR:
+        pass  # esperado: nao muda nenhum status (ex: compra recusada nunca teve acesso)
     else:
         print(f"[kiwify webhook] evento nao mapeado: {evento!r} -- ignorado (nenhuma acao tomada).")
 
