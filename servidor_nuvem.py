@@ -67,9 +67,14 @@ try:
 except Exception:
     HAS_CHAT = False
 
+import auth
+from kiwify_webhook import kiwify_bp
+
 # ── App Flask ─────────────────────────────────────────────────────────────────
 
 app = Flask(__name__, static_folder="webapp", static_url_path="")
+auth.init_db()
+app.register_blueprint(kiwify_bp)
 
 @app.after_request
 def add_cors(response):
@@ -503,6 +508,7 @@ def index():
 
 
 @app.route("/api/analisar", methods=["POST"])
+@auth.subscription_required
 def api_analisar():
     e = _get()
     if e["status"] == "carregando":
@@ -529,6 +535,7 @@ def api_status():
 
 
 @app.route("/api/resultado")
+@auth.subscription_required
 def api_resultado():
     e = _get()
     if e["status"] != "pronto" or not e["resultado"]:
@@ -537,6 +544,7 @@ def api_resultado():
 
 
 @app.route("/api/gerar-inteligente", methods=["POST"])
+@auth.subscription_required
 def api_gerar_inteligente():
     ia = _ia_get()
     if ia["status"] == "carregando":
@@ -567,6 +575,7 @@ def api_status_inteligente():
 
 
 @app.route("/api/resultado-inteligente")
+@auth.subscription_required
 def api_resultado_inteligente():
     ia = _ia_get()
     if ia["status"] != "pronto" or not ia["dados"]:
@@ -575,6 +584,7 @@ def api_resultado_inteligente():
 
 
 @app.route("/api/ai/resumo")
+@auth.subscription_required
 def api_ai_resumo():
     e = _get()
     if e["status"] != "pronto" or not e["resultado"]:
@@ -618,6 +628,7 @@ def api_ai_resumo():
 
 
 @app.route("/api/ai/aplicar", methods=["POST"])
+@auth.subscription_required
 def api_ai_aplicar():
     if not request.is_json:
         return jsonify({"ok": False, "mensagem": "JSON esperado."}), 400
@@ -661,6 +672,7 @@ def api_ai_aplicar():
 
 
 @app.route("/api/chat", methods=["POST"])
+@auth.subscription_required
 def api_chat():
     if not HAS_CHAT:
         return jsonify({"ok": False, "mensagem": "Chat nao disponivel."}), 503
@@ -681,6 +693,7 @@ def api_chat():
 
 
 @app.route("/api/chat/historico")
+@auth.subscription_required
 def api_chat_historico():
     if not HAS_CHAT:
         return jsonify({"ok": True, "historico": []})
@@ -688,6 +701,7 @@ def api_chat_historico():
 
 
 @app.route("/api/chat/limpar", methods=["DELETE"])
+@auth.subscription_required
 def api_chat_limpar():
     if HAS_CHAT:
         get_chat().limpar_historico()
