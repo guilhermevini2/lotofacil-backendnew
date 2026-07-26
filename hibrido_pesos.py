@@ -113,27 +113,69 @@ def _avaliar_pesos(
     concursos: list[dict],
     score_fn,
     n_teste: int = 40,
+    n_janelas: int = 3,
+    gap_holdout: int = 40,
 ) -> float:
     """
-    Avalia um conjunto de pesos medindo a cobertura media nos ultimos
-    n_teste concursos (sem data leakage).
-    Retorna: hits_media (media de dezenas do sorteio dentro do pool de 18).
+    Avalia um conjunto de pesos medindo a cobertura media em VARIAS janelas
+    de concursos (nao so a mais recente), sem tocar nos ultimos
+    `gap_holdout` concursos -- essa reserva fica isolada para a avaliacao
+    final de aceite/rejeicao em hibrido_autoaprendizado.py, evitando que o
+    otimizador "decore" justamente o trecho usado para decidir se os pesos
+    novos sao melhores.
+
+    Usar varias janelas espalhadas no historico reduz o overfitting a um
+    unico periodo (que pode ter sido sorte/azar) e da uma medida mais
+    estavel do que os pesos realmente entregam.
     """
     from config import DEZENAS_SORTEADAS
+
+    limite_treino = max(30, len(concursos) - gap_holdout)
+    if limite_treino - n_teste < 30:
+        # Historico curto: cai para uma unica janela (comportamento antigo)
+        n_janelas = 1
+
     total_hits = 0
     n_avaliados = 0
 
-    inicio = max(30, len(concursos) - n_teste)
+    for j in range(n_janelas):
+        fim = limite_treino - j * n_teste
+        inicio = max(30, fim - n_teste)
+        if fim <= inicio:
+            break
+        for idx in range(inicio, fim):
+            historico = concursos[:idx]
+            sorteio = set(concursos[idx]["dezenas"])
+            scores = score_fn(historico, pesos=pesos, ml_probas=None)
+            pool18 = sorted(scores, key=lambda d: -scores[d])[:18]
+            total_hits += len(sorteio & set(pool18))
+            n_avaliados += 1
+
+    return total_hits / n_avaliados if n_avaliados else 0.0
+
+
+def avaliar_pesos_holdout(
+    pesos: dict,
+    concursos: list[dict],
+    score_fn,
+    gap_holdout: int = 40,
+) -> float:
+    """
+    Avalia os pesos SOMENTE nos ultimos `gap_holdout` concursos -- o trecho
+    que _avaliar_pesos nunca usa durante a busca. Use isto para decidir de
+    forma honesta se os pesos novos realmente generalizam, em vez de medir
+    no mesmo trecho onde eles foram otimizados.
+    """
+    inicio = max(30, len(concursos) - gap_holdout)
+    total_hits = 0
+    n_avaliados = 0
     for idx in range(inicio, len(concursos)):
         historico = concursos[:idx]
         sorteio = set(concursos[idx]["dezenas"])
-
         scores = score_fn(historico, pesos=pesos, ml_probas=None)
         pool18 = sorted(scores, key=lambda d: -scores[d])[:18]
-        hits = len(sorteio & set(pool18))
-        total_hits += hits
+        total_hits += len(sorteio & set(pool18))
         n_avaliados += 1
-
     return total_hits / n_avaliados if n_avaliados else 0.0
 
 
@@ -160,16 +202,33 @@ def otimizar_pesos(
     pesos_atual = carregar_pesos()
     melhor_score = _avaliar_pesos(pesos_atual, concursos, score_fn, n_teste)
     melhor_pesos = dict(pesos_atual)
+    pesos_corrente = dict(pesos_atual)
+    score_corrente = melhor_score
 
     if verbose:
         print(f"  Score inicial: {melhor_score:.4f} hits/concurso")
 
     sem_melhora = 0
     for i in range(n_iter):
-        # Intensidade diminui com o tempo (simulated annealing suave)
-        intensidade = max(0.01, 0.08 * (1 - i / n_iter))
-        candidato = _perturbar(melhor_pesos, intensidade)
+        # Intensidade e "temperatura" diminuem com o tempo (simulated annealing)
+        progresso = i / n_iter
+        intensidade = max(0.01, 0.08 * (1 - progresso))
+        temperatura = max(0.0005, 0.02 * (1 - progresso))
+
+        candidato = _perturbar(pesos_corrente, intensidade)
         score_cand = _avaliar_pesos(candidato, concursos, score_fn, n_teste)
+
+        delta = score_cand - score_corrente
+        aceita = delta > 0
+        if not aceita and temperatura > 0:
+            # Aceita um candidato um pouco pior com probabilidade decrescente --
+            # isso evita que a busca fique presa no primeiro otimo local que encontrar.
+            prob_aceite = pow(2.71828, delta / temperatura)
+            aceita = random.random() < prob_aceite
+
+        if aceita:
+            pesos_corrente = candidato
+            score_corrente = score_cand
 
         if score_cand > melhor_score:
             melhor_score = score_cand
@@ -181,7 +240,7 @@ def otimizar_pesos(
             sem_melhora += 1
 
         # Early stopping se convergiu
-        if sem_melhora >= 30:
+        if sem_melhora >= 40:
             if verbose:
                 print(f"  Convergido na iteracao {i+1}")
             break
