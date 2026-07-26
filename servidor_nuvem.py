@@ -50,10 +50,10 @@ except Exception:
 
 try:
     from ai_engine import analisar as engine_analisar
-    from ai_engine import _rankear_jogos, _nivel_confianca_simples
     HAS_ENGINE = True
-except Exception:
+except Exception as _exc_engine:
     HAS_ENGINE = False
+    print(f"AVISO: ai_engine nao pode ser importado, classificacao de jogos desativada: {_exc_engine}")
 
 try:
     from ml_model import treinar as ml_treinar, prever_probabilidades
@@ -335,6 +335,8 @@ def _rodar_analise(pool_size: int = 18, modo: str = "basico"):
                 "tipo":             bt_usar.get("tipo", "fixo"),
                 "total_concursos":  bt_usar["total_concursos"],
                 "pct_dentro_pool":  bt_usar["pct_dentro_pool"],
+                "media_pool_hits":     bt_usar.get("media_pool_hits", 0),
+                "media_pool_hits_pct": bt_usar.get("media_pool_hits_pct", 0),
                 "faixas": {str(k): v for k, v in bt_usar["faixas"].items()},
             },
             "acumulacao":  info_acum if info_acum.get("ok") else None,
@@ -619,6 +621,8 @@ def api_ai_resumo():
             "tipo":          bt.get("tipo", "fixo"),
             "concursos":     bt.get("total_concursos", 0),
             "cobertura_pct": bt.get("pct_dentro_pool", 0),
+            "media_dezenas_no_pool": bt.get("media_pool_hits", 0),
+            "media_dezenas_no_pool_pct": bt.get("media_pool_hits_pct", 0),
             "pts_15": bt.get("faixas", {}).get("15", 0),
             "pts_14": bt.get("faixas", {}).get("14", 0),
         },
