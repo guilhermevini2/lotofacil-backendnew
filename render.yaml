@@ -17,6 +17,11 @@ services:
       - key: PUTER_NODE_URL
         sync: false
 
+      # Segredo compartilhado com o Cron Job abaixo, para autorizar a
+      # atualizacao diaria automatica (nao e usado por clientes).
+      - key: CRON_SECRET
+        sync: false
+
   # Servidor Node.js (Puter.js) — usado pelas abas "IA" e "Chat".
   # Sem PUTER_AUTH_TOKEN definido, cai automaticamente no motor heuristico
   # local (sem IA generativa, mas sem quebrar o servico).
@@ -32,3 +37,24 @@ services:
         sync: false   # defina manualmente no dashboard do Render, se tiver um token Puter
       - key: PUTER_MODEL
         value: gpt-4o-mini
+
+  # Cron Job — chama o backend uma vez por dia para pre-baixar o concurso
+  # mais recente, deixando o cache pronto antes que qualquer cliente abra o app.
+  # A Lotofacil sorteia por volta das 20h (horario de Brasilia); rodamos as
+  # 21h30 BRT (00:30 UTC) para dar tempo da Caixa publicar o resultado oficial.
+  - type: cron
+    name: lotofacil-atualizacao-diaria
+    env: python
+    schedule: "30 0 * * *"
+    buildCommand: pip install requests
+    startCommand: >
+      python -c "
+      import os, requests;
+      url = 'https://lotofacil-backendnew.onrender.com/api/interno/atualizar-diario';
+      r = requests.post(url, headers={'X-Cron-Secret': os.environ['CRON_SECRET']}, timeout=120);
+      print(r.status_code, r.text);
+      r.raise_for_status()
+      "
+    envVars:
+      - key: CRON_SECRET
+        sync: false   # mesmo valor configurado no servico lotofacil-pro acima
