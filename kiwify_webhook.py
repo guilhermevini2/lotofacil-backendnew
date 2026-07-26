@@ -76,6 +76,12 @@ def receber_webhook_kiwify():
         return jsonify({"ok": False, "erro": "token invalido"}), 401
 
     payload = request.get_json(silent=True) or {}
+    # Compras REAIS chegam envelopadas: {"url":..., "signature":..., "order": {...dados aqui...}}
+    # O botao "Testar Webhook" da Kiwify manda os mesmos campos direto na raiz.
+    # Aceitamos os dois formatos.
+    if isinstance(payload.get("order"), dict):
+        payload = payload["order"]
+
     evento = _extrair_evento(payload, request.args.get("event"))
     email = _extrair_email(payload)
     nome = _extrair_nome(payload)
