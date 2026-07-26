@@ -70,6 +70,8 @@ except Exception:
 import auth
 from kiwify_webhook import kiwify_bp
 
+CRON_SECRET = os.environ.get("CRON_SECRET", "")
+
 # ── App Flask ─────────────────────────────────────────────────────────────────
 
 app = Flask(__name__, static_folder="webapp", static_url_path="")
@@ -725,6 +727,31 @@ def api_limpar_cache():
 @app.route("/health")
 def health():
     return jsonify({"ok": True, "versao": "4.0", "modo": "nuvem"})
+
+
+@app.route("/api/interno/atualizar-diario", methods=["POST"])
+def atualizar_diario():
+    """Chamada pelo Render Cron Job uma vez por dia para pre-baixar concursos
+    novos, deixando o cache quente antes de qualquer usuario abrir o app.
+    Nao usa @auth.subscription_required -- e protegida por um segredo proprio
+    (CRON_SECRET), que so o Render Cron conhece, nao os clientes."""
+    if not CRON_SECRET:
+        return jsonify({"ok": False, "erro": "CRON_SECRET nao configurado no servidor"}), 500
+    if request.headers.get("X-Cron-Secret", "") != CRON_SECRET:
+        return jsonify({"ok": False, "erro": "nao autorizado"}), 401
+
+    try:
+        ultimo = api.ultimo_concurso()
+        concursos = api.buscar_intervalo(CONCURSO_INICIO_2026, ultimo)
+        info_acum = acumulacao.verificar_acumulacao()
+        return jsonify({
+            "ok": True,
+            "ultimo_concurso": ultimo,
+            "total_em_cache": len(concursos),
+            "acumulou_proximo": info_acum.get("acumulou") if isinstance(info_acum, dict) else None,
+        })
+    except Exception as exc:
+        return jsonify({"ok": False, "erro": str(exc)}), 500
 
 
 # ── Ponto de entrada ──────────────────────────────────────────────────────────
