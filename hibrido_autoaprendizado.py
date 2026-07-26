@@ -125,7 +125,7 @@ def executar_ciclo_autoaprendizado(
     if verbose:
         print("\n  [1/5] Avaliando desempenho atual...")
     pesos_antes = carregar_pesos()
-    metricas_antes = avaliar_ciclo(concursos, pesos_antes, ml_probas, n_ultimos=20)
+    metricas_antes = avaliar_ciclo(concursos, pesos_antes, ml_probas, n_ultimos=40)
     resultado["metricas_antes"] = metricas_antes
     if verbose:
         print(f"       Hits media: {metricas_antes['hits_media']:.2f} | "
@@ -133,7 +133,7 @@ def executar_ciclo_autoaprendizado(
 
     # Passo 2: Backtest e otimizacao dos pesos
     if verbose:
-        print("\n  [2/5] Otimizando pesos por Hill Climbing...")
+        print("\n  [2/5] Otimizando pesos por Hill Climbing (busca multi-janela)...")
 
     def score_fn_wrapper(historico_conc, pesos, ml_probas=None):
         return calcular_scores(historico_conc, pesos, ml_probas)
@@ -141,13 +141,15 @@ def executar_ciclo_autoaprendizado(
     pesos_novos, melhor_score = otimizar_pesos(
         concursos,
         score_fn=score_fn_wrapper,
-        n_iter=80,
-        n_teste=30,
+        n_iter=120,
+        n_teste=40,
         verbose=verbose,
     )
 
-    # Passo 3: Avaliar DEPOIS da otimizacao
-    metricas_depois = avaliar_ciclo(concursos, pesos_novos, ml_probas, n_ultimos=20)
+    # Passo 3: Avaliar DEPOIS da otimizacao -- nos MESMOS ultimos 40 concursos
+    # que a busca acima nunca viu (gap_holdout=40 em otimizar_pesos), para que
+    # a decisao de aceitar os pesos novos reflita generalizacao real, nao ruido.
+    metricas_depois = avaliar_ciclo(concursos, pesos_novos, ml_probas, n_ultimos=40)
     resultado["metricas_depois"] = metricas_depois
     melhora = metricas_depois["hits_media"] - metricas_antes["hits_media"]
     resultado["melhora_hits"] = round(melhora, 3)
@@ -160,7 +162,10 @@ def executar_ciclo_autoaprendizado(
         print(f"       Melhora: {sinal}{melhora:.3f} hits/concurso")
 
     # Aceitar novos pesos se melhoraram (ou forcado)
-    if melhora >= 0 or forcar_otimizacao:
+    # Exige uma melhora minima (nao apenas >= 0) para aceitar os pesos novos --
+    # uma "melhora" de 0.001 hits/concurso e ruido estatistico, nao progresso real.
+    MARGEM_MINIMA = 0.02
+    if melhora >= MARGEM_MINIMA or forcar_otimizacao:
         salvar_pesos(pesos_novos, meta={
             "concurso": ultimo_disponivel,
             "hits_media": metricas_depois["hits_media"],
