@@ -69,6 +69,7 @@ except Exception:
 
 import auth
 from kiwify_webhook import kiwify_bp
+from kirvano_webhook import kirvano_bp
 
 CRON_SECRET = os.environ.get("CRON_SECRET", "")
 
@@ -77,6 +78,7 @@ CRON_SECRET = os.environ.get("CRON_SECRET", "")
 app = Flask(__name__, static_folder="webapp", static_url_path="")
 auth.init_db()
 app.register_blueprint(kiwify_bp)
+app.register_blueprint(kirvano_bp)
 
 @app.after_request
 def add_cors(response):
